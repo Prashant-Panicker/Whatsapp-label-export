@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Label Exporter</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="header">
+    <div class="logo">🏷️</div>
+    <div>
+      <div class="title">WhatsApp Label Exporter</div>
+      <div class="subtitle">Export contacts from a label</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <label class="label-text">Label</label>
+    <div class="label-row">
+      <select id="labelSelect" class="select">
+        <option value="">— click Load Labels first —</option>
+      </select>
+      <button id="loadLabelsBtn" class="btn btn-secondary btn-sm">Load</button>
+    </div>
+    <div class="hint">Or type a name to override:</div>
+    <input type="text" id="labelOverride" class="input" placeholder="e.g. Theyyam 2025">
+  </div>
+
+  <div class="section">
+    <button id="scanButton" class="btn btn-primary">Scan Label</button>
+  </div>
+
+  <div id="statusLine" class="status"></div>
+  <div id="summaryLine" class="summary"></div>
+
+  <div id="previewSection" class="section" style="display:none">
+    <div class="preview-header">
+      <span id="previewCount"></span>
+      <div class="export-btns">
+        <button id="csvButton" class="btn btn-export">CSV</button>
+        <button id="jsonButton" class="btn btn-export">JSON</button>
+      </div>
+    </div>
+    <div id="preview"></div>
+  </div>
+
+  <div class="section">
+    <button id="inspectBtn" class="btn btn-ghost">🔍 Store Inspector</button>
+  </div>
+
+  <div id="inspectorSection" class="section" style="display:none">
+    <div class="inspector-header">Store Inspector</div>
+    <pre id="inspectorOutput" class="inspector-output"></pre>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
