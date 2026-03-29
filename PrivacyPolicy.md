@@ -50,13 +50,3 @@ These permissions are used solely for the core functionality of the extension.
 Users can uninstall the extension at any time through Chrome's extensions management page.
 
 Once uninstalled, the extension no longer has access to any browser data.
-
-## Changes to this Privacy Policy
-
-This privacy policy may be updated if the extension's functionality changes. Any updates will be reflected in the extension listing.
-
-## Contact
-
-If you have any questions about this privacy policy, please contact:
-
-**[Your Contact Email]**
