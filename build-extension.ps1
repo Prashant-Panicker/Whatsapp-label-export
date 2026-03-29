@@ -8,6 +8,7 @@ $files = @(
     "injected.js",
     "popup.html",
     "popup.js",
+    "popup.css",
     "icon"
 )
 
