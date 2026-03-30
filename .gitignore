@@ -1,3 +1,4 @@
 extension.zip
 /extension/*
 build-extension.ps1
+*.zip
