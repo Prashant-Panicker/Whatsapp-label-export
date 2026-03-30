@@ -1,0 +1,40 @@
+name: Deploy Chrome Extension
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install zip
+        run: sudo apt-get install zip
+
+      - name: Build extension package
+        run: |
+          mkdir extension
+          cp manifest.json extension/
+          cp content.js extension/
+          cp injected.js extension/
+          cp popup.html extension/
+          cp popup.js extension/
+          cp -r icon extension/
+
+          cd extension
+          zip -r ../extension.zip *
+
+      - name: Upload to Chrome Web Store
+        uses: mobilefirstllc/cws-publish@latest
+        with:
+            extension_id: ${{ secrets.CHROME_EXTENSION_ID }}
+            zip_file: extension.zip
+            client_id: ${{ secrets.CHROME_CLIENT_ID }}
+            client_secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+            refresh_token: ${{ secrets.CHROME_REFRESH_TOKEN }}
