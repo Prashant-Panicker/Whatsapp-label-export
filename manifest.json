@@ -1,10 +1,9 @@
 {
   "manifest_version": 3,
   "name": "WhatsApp Label Exporter",
-  "description": "Export contacts from the currently opened WhatsApp Web label view to CSV or JSON.",
-  "version": "1.0.0",
+  "description": "Export contacts from a WhatsApp Web label to CSV or JSON.",
+  "version": "1.1.0",
   "permissions": [
-    "downloads",
     "tabs"
   ],
   "host_permissions": [
@@ -27,15 +26,8 @@
   "content_scripts": [
     {
       "matches": ["https://web.whatsapp.com/*"],
-      "js": ["injected.js"],
-      "run_at": "document_idle",
-      "world": "MAIN"
-    },
-    {
-      "matches": ["https://web.whatsapp.com/*"],
       "js": ["content.js"],
-      "run_at": "document_idle",
-      "world": "ISOLATED"
+      "run_at": "document_idle"
     }
   ]
 }

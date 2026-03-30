@@ -52,24 +52,38 @@ function sanitizeFilePart(value) {
     .replace(/^-+|-+$/g, "").toLowerCase() || "label";
 }
 
+function escHtml(str) {
+  return (str || "").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
 function toCsv(rows) {
   const headers = ["number", "countrycode", "name", "lastContactedDate", "labelName"];
-  const escape = (v) => {
+  // Columns that must always be quoted as text so Excel doesn't treat them as numbers
+  const alwaysQuote = new Set(["number", "countrycode"]);
+  const escape = (v, h) => {
     const s = v == null ? "" : String(v);
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    if (alwaysQuote.has(h) || /[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
   };
   return [
     headers.join(","),
-    ...rows.map(row => headers.map(h => escape(row[h])).join(","))
+    ...rows.map(row => headers.map(h => escape(row[h], h)).join(","))
   ].join("\r\n");
 }
 
+// ── Cross-browser download ─────────────────────────────────────────────────
+// chrome.downloads with blob URLs is blocked in Firefox extension popups.
+// Using an anchor click works in both Chrome and Firefox.
 function triggerDownload(fileName, content, mimeType) {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
-  chrome.downloads.download({ url, filename: fileName, saveAs: true }, () => {
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
-  });
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 // ── Load Labels dropdown ───────────────────────────────────────────────────
@@ -86,7 +100,7 @@ async function loadLabels() {
       ? labels.map(l => `<option value="${escHtml(l.name)}">${escHtml(l.name)}</option>`).join("")
       : `<option value="">No labels found</option>`;
 
-    setStatus(`${labels.length} label(s) loaded.`, "Select a label and results will update.", "success");
+    setStatus(`${labels.length} label(s) loaded.`, "Select a label then click Scan.", "success");
   } catch (err) {
     setStatus("Failed to load labels.", err.message, "error");
   } finally {
@@ -96,24 +110,13 @@ async function loadLabels() {
 
 loadLabelsBtn.addEventListener("click", () => loadLabels());
 
-// Auto-load labels then immediately scan on popup open
-async function autoStart() {
-  await loadLabels();
-  // Auto-scan using whichever label is first in the dropdown
-  if (labelSelect.options.length > 0 && labelSelect.value) {
-    scanButton.click();
-  }
-}
-autoStart();
-
-function escHtml(str) {
-  return (str || "").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-}
+// Auto-load labels only — no auto-scan
+loadLabels();
 
 // ── Scan ───────────────────────────────────────────────────────────────────
 scanButton.addEventListener("click", async () => {
   setBusy(true);
-  setStatus("Scanning label...", "Reading from WhatsApp Store...");
+  setStatus("Scanning label...", "Reading from WhatsApp...");
   previewSection.style.display = "none";
   try {
     const tab = await getWhatsAppTab();
@@ -125,9 +128,11 @@ scanButton.addEventListener("click", async () => {
     lastResult = res;
     renderPreview(res.contacts);
     previewSection.style.display = "block";
+
+    const skipped = res.skippedNoPhone ? ` (${res.skippedNoPhone} skipped — no phone)` : "";
     setStatus(
       `✓ ${res.contacts.length} contact(s) found`,
-      `Label: ${res.labelName}`,
+      `Label: ${res.labelName}${skipped}`,
       "success"
     );
   } catch (err) {
@@ -197,27 +202,7 @@ inspectBtn.addEventListener("click", async () => {
 
     if (!res?.ok) throw new Error(res?.error || "Inspection failed.");
 
-    // Pretty print but truncate large objects so it's readable
     const data = res.inspection || res;
-
-    // Truncate sampleChat/sampleContact to show only key fields
-    if (data.sampleChat) {
-      const keep = ["id","name","t","labels","labelIds","isGroup","formattedTitle","contact"];
-      const trimmed = {};
-      for (const k of Object.keys(data.sampleChat)) {
-        trimmed[k] = keep.includes(k) ? data.sampleChat[k] : typeof data.sampleChat[k];
-      }
-      data.sampleChat = trimmed;
-    }
-    if (data.sampleContact) {
-      const keep = ["id","name","pushname","formattedName","isMe","isMyContact"];
-      const trimmed = {};
-      for (const k of Object.keys(data.sampleContact)) {
-        trimmed[k] = keep.includes(k) ? data.sampleContact[k] : typeof data.sampleContact[k];
-      }
-      data.sampleContact = trimmed;
-    }
-
     inspectorOutput.textContent = JSON.stringify(data, null, 2);
     inspectorSection.style.display = "block";
     inspectBtn.textContent = "🔍 Store Inspector (hide)";

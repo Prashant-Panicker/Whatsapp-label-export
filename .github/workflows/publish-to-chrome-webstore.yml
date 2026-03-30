@@ -1,40 +1,116 @@
-name: Deploy Chrome Extension
+name: Deploy Extension
 
 on:
   push:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -y zip jq
+          npm install -g web-ext
 
-      - name: Install zip
-        run: sudo apt-get install zip
+      - name: Bump version in manifest.json
+        id: version
+        run: |
+          # Read current version
+          CURRENT=$(jq -r '.version' manifest.json)
+          echo "Current version: $CURRENT"
+
+          # Determine bump type (default patch on auto push, use input on manual)
+          BUMP="${{ github.event.inputs.bump }}"
+          if [ -z "$BUMP" ]; then BUMP="patch"; fi
+
+          # Split into parts
+          MAJOR=$(echo $CURRENT | cut -d. -f1)
+          MINOR=$(echo $CURRENT | cut -d. -f2)
+          PATCH=$(echo $CURRENT | cut -d. -f3)
+
+          # Bump
+          if [ "$BUMP" = "major" ]; then
+            MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0
+          elif [ "$BUMP" = "minor" ]; then
+            MINOR=$((MINOR + 1)); PATCH=0
+          else
+            PATCH=$((PATCH + 1))
+          fi
+
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "New version: $NEW_VERSION"
+
+          # Write back to manifest.json
+          jq --arg v "$NEW_VERSION" '.version = $v' manifest.json > tmp.json && mv tmp.json manifest.json
+
+          # Export for later steps
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Commit and push version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          git commit -m "chore: bump version to v${{ steps.version.outputs.new_version }} [skip ci]"
+          git push
 
       - name: Build extension package
         run: |
           mkdir extension
           cp manifest.json extension/
           cp content.js extension/
-          cp injected.js extension/
           cp popup.html extension/
           cp popup.js extension/
+          cp popup.css extension/
           cp -r icon extension/
-
           cd extension
           zip -r ../extension.zip *
 
       - name: Upload to Chrome Web Store
         uses: mobilefirstllc/cws-publish@latest
         with:
-            extension_id: ${{ secrets.CHROME_EXTENSION_ID }}
-            zip_file: extension.zip
-            client_id: ${{ secrets.CHROME_CLIENT_ID }}
-            client_secret: ${{ secrets.CHROME_CLIENT_SECRET }}
-            refresh_token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          extension_id: ${{ secrets.CHROME_EXTENSION_ID }}
+          zip_file: extension.zip
+          client_id: ${{ secrets.CHROME_CLIENT_ID }}
+          client_secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+          refresh_token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+
+      - name: Publish to Firefox AMO
+        run: |
+          web-ext sign \
+            --source-dir ./extension \
+            --artifacts-dir ./firefox-dist \
+            --api-key ${{ secrets.AMO_API_KEY }} \
+            --api-secret ${{ secrets.AMO_API_SECRET }} \
+            --channel listed
+        # Change --channel to 'unlisted' if you don't want it publicly listed on AMO
+        # 'listed' = public on addons.mozilla.org (requires AMO review)
+        # 'unlisted' = self-distributed, auto-signed, no review needed
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.new_version }}
+          name: v${{ steps.version.outputs.new_version }}
+          files: |
+            extension.zip
+            firefox-dist/*.xpi
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
