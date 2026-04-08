@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "WhatsApp Label Exporter",
   "description": "Export contacts from a WhatsApp Web label to CSV or JSON.",
-  "version": "1.1.4",
+  "version": "1.2.0",
   "permissions": [
     "tabs"
   ],
