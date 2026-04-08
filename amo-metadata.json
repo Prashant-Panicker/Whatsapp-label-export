@@ -1,4 +1,9 @@
 {
+  "categories": {
+    "firefox": [
+      "productivity"
+    ]
+  },
   "version": {
     "license": "MIT"
   }
