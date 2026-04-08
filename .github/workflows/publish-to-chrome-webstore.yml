@@ -103,7 +103,8 @@ jobs:
             --artifacts-dir ./firefox-dist \
             --api-key ${{ secrets.AMO_API_KEY }} \
             --api-secret ${{ secrets.AMO_API_SECRET }} \
-            --channel listed
+            --channel listed \
+            --license MIT
         # Change --channel to 'unlisted' if you don't want it publicly listed on AMO
         # 'listed' = public on addons.mozilla.org (requires AMO review)
         # 'unlisted' = self-distributed, auto-signed, no review needed
